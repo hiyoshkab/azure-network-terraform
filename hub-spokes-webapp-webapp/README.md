@@ -4,30 +4,7 @@ Terraform configuration that provisions a hub-and-spoke network topology on Azur
 > **Note:** By default Azure injects an implicit `/32` system route for the Private Endpoint IP into every peered VNet, and that more-specific route normally wins — so traffic bypasses any UDR and reaches the Private Endpoint directly. This template enables **route-table network policies** on the PE subnet (`private_endpoint_network_policies = "RouteTableEnabled"`), which lets user-defined routes take precedence over that `/32`. As a result, both the inbound path (Spoke 1 → PE) and the Private Endpoint's return path (PE → Spoke 1) are forced through the Azure Firewall, giving symmetric, inspected routing.
 
 ## Architecture
-```mermaid
-flowchart LR
-    subgraph Spoke1["Spoke 1 — vnet-spoke1 (10.0.0.0/16)"]
-        WA1["Web App 1<br/>(VNet integrated)"]
-        RT["Route Table<br/>10.2.0.0/16 → Firewall"]
-    end
-
-    subgraph Hub["Hub — vnet-hub (10.1.0.0/16)"]
-        FW["Azure Firewall (Basic)<br/>Policy: allow 10.0.0.0/24 → 10.2.0.0/24 :80,443"]
-    end
-
-    subgraph Spoke2["Spoke 2 — vnet-spoke2 (10.2.0.0/16)"]
-        RT2["Route Table<br/>10.0.0.0/16 → Firewall<br/>(PE route-table policies enabled)"]
-        PE["Private Endpoint"]
-        WA2["Web App 2<br/>(public access disabled)"]
-    end
-
-    WA1 --> RT
-    RT -->|peering| FW
-    FW -->|peering| PE
-    PE --> WA2
-    WA2 -->|return traffic| RT2
-    RT2 -->|peering| FW
-```
+![Architecture Diagram](./architecture.png)
 
 - **Hub VNet** (`10.1.0.0/16`) hosts the Azure Firewall (`AzureFirewallSubnet`) and its management interface (`AzureFirewallManagementSubnet`).
 - **Spoke 1 VNet** (`10.0.0.0/16`) hosts a VNet-integrated Linux Web App. All outbound traffic is forced through the VNet, and a route table sends Spoke 2-bound traffic (`10.2.0.0/16`) to the firewall's private IP.

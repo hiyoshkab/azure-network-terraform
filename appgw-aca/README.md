@@ -21,16 +21,15 @@ Without the forwarded-origin configuration, redirects and authentication cookies
 
 ### Resources created
 
-- Resource group and VNet (`10.0.0.0/16`).
-- Application Gateway subnet (`10.0.0.0/24`), NSG, and subnet association. Custom inbound rules allow HTTPS and Application Gateway v2 management traffic; Azure's default NSG rules remain.
-- Standard_v2 Application Gateway with autoscaling from one to two instances and a Standard static public IP.
-- ACA subnet (`10.0.1.0/24`) and an internal workload profiles (v2) environment with a Consumption profile.
-- NGINX Container App with a user-assigned managed identity and a Key Vault-backed client-secret reference.
-- Private DNS zone for the environment's default domain, VNet link, and wildcard/apex A records.
-- A record in the existing public DNS zone.
-- Single-tenant Entra app registration, service principal, and Easy Auth configuration.
-- Gateway managed identity and secret-scoped Key Vault Secrets User role assignments.
-- Log Analytics workspace (`appgw-aca-laws`) and environment diagnostic settings, with 30-day log retention.
+| File | Resources |
+| --- | --- |
+| [main.tf](main.tf) | Terraform and provider requirements, provider configuration, and resource group |
+| [network.tf](network.tf) | VNet (`10.0.0.0/16`), Application Gateway subnet (`10.0.0.0/24`), ACA subnet (`10.0.1.0/24`), NSG, and subnet association. Custom inbound rules allow HTTPS and Application Gateway v2 management traffic; Azure's default NSG rules remain. Private DNS zone for the environment's default domain, VNet link, wildcard/apex A records, and an A record in the existing public DNS zone |
+| [appgw.tf](appgw.tf) | Standard_v2 Application Gateway with autoscaling from one to two instances, Standard static public IP, and gateway managed identity |
+| [aca.tf](aca.tf) | Internal workload profiles (v2) environment with a Consumption profile, NGINX Container App with a user-assigned managed identity and Key Vault-backed client-secret reference, single-tenant Entra app registration, service principal, and Easy Auth configuration. Log Analytics workspace (`appgw-aca-laws`) and environment diagnostic settings, with 30-day log retention |
+| [keyvault.tf](keyvault.tf) | Existing Key Vault lookup and secret-scoped Key Vault Secrets User role assignments for the app and gateway identities |
+| [variables.tf](variables.tf) | Input variable definitions and defaults |
+| [outputs.tf](outputs.tf) | Application URL, DNS details, app and environment addresses, Easy Auth details, and managed identity principal IDs |
 
 > **Production considerations:** This sample assumes a publicly reachable Key Vault for simpler setup. For production, use a private endpoint and appropriate private DNS/network configuration for both secret consumers. Those resources are not included here. Also review image version pinning, availability requirements, secret rotation, and whether a WAF-enabled gateway is required; this sample uses Standard_v2, not WAF_v2.
 

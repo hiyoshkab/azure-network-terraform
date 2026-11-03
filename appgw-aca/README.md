@@ -9,6 +9,8 @@ Easy Auth uses the `AppServiceAuthSession` cookie to maintain authenticated brow
 
 ![Architecture diagram](./architecture.png)
 
+> **Production considerations:** This sample assumes a publicly reachable Key Vault for simpler setup. For production, use a private endpoint and appropriate private DNS/network configuration for both secret consumers. Those resources are not included here. Also review image version pinning, availability requirements, secret rotation, and whether a WAF-enabled gateway is required; this sample uses Standard_v2, not WAF_v2.
+
 ### Request and sign-in flow
 
 1. Public DNS resolves the custom domain to App Gateway's static public IP.
@@ -32,8 +34,6 @@ The gateway header rewrites and Easy Auth's forward-proxy settings work together
 | [keyvault.tf](keyvault.tf) | Existing Key Vault lookup and secret-scoped Key Vault Secrets User role assignments for the app and gateway identities |
 | [variables.tf](variables.tf) | Input variable definitions and defaults |
 | [outputs.tf](outputs.tf) | Application URL, DNS details, app and environment addresses, Easy Auth details, and managed identity principal IDs |
-
-> **Production considerations:** This sample assumes a publicly reachable Key Vault for simpler setup. For production, use a private endpoint and appropriate private DNS/network configuration for both secret consumers. Those resources are not included here. Also review image version pinning, availability requirements, secret rotation, and whether a WAF-enabled gateway is required; this sample uses Standard_v2, not WAF_v2.
 
 ## Prerequisites
 

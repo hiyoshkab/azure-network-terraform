@@ -2,36 +2,17 @@
 This Terraform template creates a hub-and-spoke network with a Windows Server DNS in the hub and two Linux Web Apps in the same spoke. One app uses regional VNet integration, and the other has public access disabled and is exposed through a private endpoint.
 
 ## Architecture
-```mermaid
-flowchart BT
-    Zone["Private DNS zone<br/>privatelink.azurewebsites.net"]
-    AzureDns["Azure DNS<br/>168.63.129.16"]
-    Integrated["Linux Web App<br/>VNet integrated"]
-    PrivateApp["Linux Web App<br/>Public access disabled"]
-
-    subgraph Spoke["Spoke VNet - 10.1.0.0/16"]
-        IntegrationSubnet["Integration subnet<br/>10.1.0.0/24"]
-        Endpoint["Private endpoint<br/>10.1.1.0/24"]
-    end
-
-    subgraph Hub["Hub VNet - 10.0.0.0/16"]
-        DnsVm["Windows Server DNS<br/>Private IP: 10.0.0.4<br/>Static public IP"]
-    end
-
-    Admin["External administrator"] -->|"RDP 3389"| DnsVm
-
-    Integrated --> IntegrationSubnet
-    IntegrationSubnet -->|"DNS queries over peering"| DnsVm
-    DnsVm -->|"Conditional forward"| AzureDns
-    AzureDns --> Zone
-    IntegrationSubnet -->|"HTTPS"| Endpoint
-    Endpoint --> PrivateApp
-```
+![Architecture diagram](./architecture.png)
 
 - **Hub VNet** (`10.0.0.0/16`) hosts the Windows Server DNS VM at `10.0.0.4`.
 - **Spoke VNet** (`10.1.0.0/16`) uses `10.0.0.4` as its DNS server and contains the Web App integration and private endpoint subnets.
 - Windows DNS forwards normal queries and conditionally forwards `privatelink.azurewebsites.net` to Azure DNS at `168.63.129.16`.
 - The private DNS zone is linked only to the hub VNet, so private endpoint resolution from the spoke follows the custom DNS path.
+
+> Production Considerations
+> - The DNS VM has a static Standard public IP for easier troubleshooting and accesibility. For production, use Azure Bastion, VPN, or ExpressRoute and remove direct RDP exposure.
+> - No NSGs are set for easier customization. For production, make sure to apply NSGs to control traffic to and from the DNS servers.
+> - Use at least two DNS Servers for resiliency. Preferably across seperate availability zones.
 
 ## Resources created
 | File | Resources |
@@ -81,8 +62,4 @@ The lookup should follow a CNAME under `privatelink.azurewebsites.net` and retur
 If you're using a Windows Web App, make sure to use the `nameresolver` command when using custom DNS.
 
 ## Notes
-
-- The DNS VM has a static Standard public IP for easier troubleshooting and accesibility. For production, prefer Azure Bastion, VPN, or ExpressRoute and remove direct RDP exposure.
-- No NSGs are set for easier customization. For production, make sure to apply NSGs to control traffic to and from the DNS servers.
-- A single DNS VM is suitable for a demonstration. Use at least two across availability zones for production resiliency.
 - `WEBSITE_DNS_SERVER` environment variable is not necessary, since Web App will default to the VNet's DNS server.

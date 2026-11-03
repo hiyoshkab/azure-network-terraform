@@ -1,8 +1,9 @@
-# Container Apps (Easy Auth) with Application Gateway
+# Container Apps (Easy Auth) with App Gateway
 
-This Terraform sample deploys an internal Azure Container Apps (ACA) environment behind a public Application Gateway and protects an NGINX app with Microsoft Entra ID authentication (Easy Auth).
+This Terraform sample deploys an internal Azure Container Apps (ACA) environment behind a public App Gateway and protects an NGINX app with Microsoft Entra ID authentication (Easy Auth).
+It demonstrates how to preserve the public origin during authentication when the gateway and backend use different host names. The same principles can be applied to App Service, but this template deploys **ACA**.
 
-It demonstrates how to preserve the public origin during authentication when the gateway and backend use different host names. Similar reverse-proxy considerations apply to App Service, but this template deploys **Container Apps only**.
+Easy Auth uses the `AppServiceAuthSession` cookie to maintain authenticated browser sessions. Since App Gateway forwards requests to the default ACA host name, it must set `X-Forwarded-Host` to the public custom domain and `X-Forwarded-Proto` to `https`, and Easy Auth must be configured to use those headers. Otherwise, Easy Auth can generate redirects using the ACA default domain instead of the public origin, causing DNS resolution errors or cookie-domain mismatch, which can manifest as redirect loops.
 
 ## Architecture
 
@@ -10,22 +11,23 @@ It demonstrates how to preserve the public origin during authentication when the
 
 ### Request and sign-in flow
 
-1. Public DNS resolves the custom domain to Application Gateway's static public IP.
-2. Application Gateway terminates HTTPS using a certificate referenced from Key Vault.
+1. Public DNS resolves the custom domain to App Gateway's static public IP.
+2. App Gateway terminates HTTPS using a certificate referenced from Key Vault.
 3. The gateway connects to the app's default ACA FQDN over HTTPS. Private DNS resolves that name to the internal environment IP.
 4. The gateway overwrites `X-Forwarded-Host` with the public custom domain and `X-Forwarded-Proto` with `https`.
 5. Easy Auth uses those headers to determine the original public URL, redirect users to Microsoft Entra ID, and return them to `https://<custom-domain>/.auth/login/aad/callback`.
 6. After successful authentication, requests reach NGINX.
 
-Without the forwarded-origin configuration, redirects and authentication cookies can use the backend host instead of the public host, causing sign-in failures or redirect loops.
+The gateway header rewrites and Easy Auth's forward-proxy settings work together to preserve the public origin throughout sign-in.
+
 
 ### Resources created
 
 | File | Resources |
 | --- | --- |
 | [main.tf](main.tf) | Terraform and provider requirements, provider configuration, and resource group |
-| [network.tf](network.tf) | VNet (`10.0.0.0/16`), Application Gateway subnet (`10.0.0.0/24`), ACA subnet (`10.0.1.0/24`), NSG, and subnet association. Custom inbound rules allow HTTPS and Application Gateway v2 management traffic; Azure's default NSG rules remain. Private DNS zone for the environment's default domain, VNet link, wildcard/apex A records, and an A record in the existing public DNS zone |
-| [appgw.tf](appgw.tf) | Standard_v2 Application Gateway with autoscaling from one to two instances, Standard static public IP, and gateway managed identity |
+| [network.tf](network.tf) | VNet (`10.0.0.0/16`), App Gateway subnet (`10.0.0.0/24`), ACA subnet (`10.0.1.0/24`), NSG, and subnet association. Custom inbound rules allow HTTPS and App Gateway v2 management traffic; Azure's default NSG rules remain. Private DNS zone for the environment's default domain, VNet link, wildcard/apex A records, and an A record in the existing public DNS zone |
+| [appgw.tf](appgw.tf) | Standard_v2 App Gateway with autoscaling from one to two instances, Standard static public IP, and gateway managed identity |
 | [aca.tf](aca.tf) | Internal workload profiles (v2) environment with a Consumption profile, NGINX Container App with a user-assigned managed identity and Key Vault-backed client-secret reference, single-tenant Entra app registration, service principal, and Easy Auth configuration. Log Analytics workspace (`appgw-aca-laws`) and environment diagnostic settings, with 30-day log retention |
 | [keyvault.tf](keyvault.tf) | Existing Key Vault lookup and secret-scoped Key Vault Secrets User role assignments for the app and gateway identities |
 | [variables.tf](variables.tf) | Input variable definitions and defaults |
@@ -134,7 +136,7 @@ ContainerAppConsoleLogs
 | --- | --- |
 | `401` after completing sign-in; logs show `AADSTS7000215` / `invalid_client` | Entra rejected the submitted client secret. Verify the secret value belongs to the output client ID, is not expired, and is stored in the correct vault secret. Allow refresh/restart if an older value was cached. |
 | Redirect loop or callback using the backend domain | Verify the gateway's forwarded-header rewrite and Easy Auth's custom forward-proxy settings. Check the Entra redirect URI against `easy_auth_redirect_uri`. |
-| `502 Bad Gateway` | Check Application Gateway backend health, private DNS resolution, app readiness, and HTTPS backend connectivity. |
+| `502 Bad Gateway` | Check App Gateway backend health, private DNS resolution, app readiness, and HTTPS backend connectivity. |
 | Certificate or Key Vault access errors | Verify Azure RBAC mode, the identity's secret-scoped role assignment, the certificate secret URI, certificate validity, and vault network access. |
 | Public domain fails to resolve | Check registrar delegation and the A record against `appgw_public_ip`. |
 

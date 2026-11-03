@@ -3,26 +3,9 @@
 Terraform configuration that provisions a basic hub-and-spoke network topology in Azure. Two spoke virtual networks are each connected to a central hub virtual network through bidirectional VNet peerings.
 
 ## Architecture
+![Architecture diagram](./architecture.png)
 
-```mermaid
-flowchart LR
-    subgraph Spoke1["Spoke 1 - vnet-spoke1 (10.0.0.0/16)"]
-        S1["webapp-subnet<br/>10.0.0.0/24"]
-    end
-
-    subgraph Hub["Hub - vnet-hub (10.1.0.0/16)"]
-        HS["hub-subnet<br/>10.1.0.0/24"]
-    end
-
-    subgraph Spoke2["Spoke 2 - vnet-spoke2 (10.2.0.0/16)"]
-        S2["pe-subnet<br/>10.2.0.0/24"]
-    end
-
-    Spoke1 <-->|VNet peering| Hub
-    Hub <-->|VNet peering| Spoke2
-```
-
-The peerings allow each spoke to communicate with the hub. Azure VNet peering is not transitive, so this configuration does not provide spoke-to-spoke connectivity. Add a routing appliance, Azure Firewall, or direct spoke peering if that connectivity is required.
+The peerings allow each spoke to communicate with the hub. Azure VNet peering is not transitive, so this configuration does not provide spoke-to-spoke connectivity. Add a NVA, Azure Firewall, or direct spoke peering if that connectivity is required.
 
 ## Resources Created
 
